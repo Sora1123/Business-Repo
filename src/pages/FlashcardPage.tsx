@@ -12,8 +12,8 @@ interface Flashcard {
 }
 
 const fileMapping: Record<string, string> = {
-  sl: 'Flashcards SL.csv',
-  hl: 'Flashcards HL.csv',
+  sl: 'Flashcards_SL.csv',
+  hl: 'Flashcards_HL.csv',
 };
 
 const FlashcardPage: React.FC = () => {
@@ -37,10 +37,18 @@ const FlashcardPage: React.FC = () => {
       setLoading(true);
       try {
         const fileName = fileMapping[type];
-        const response = await fetch(`/CSVfiles/${fileName}`);
+        // Use BASE_URL to ensure correct path in subdirectories
+        const baseUrl = import.meta.env.BASE_URL.endsWith('/') 
+          ? import.meta.env.BASE_URL 
+          : `${import.meta.env.BASE_URL}/`;
+        
+        const url = `${baseUrl}CSVfiles/${fileName}`;
+        console.log(`Fetching from: ${url}`);
+
+        const response = await fetch(url);
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch ${fileName}`);
+          throw new Error(`Failed to fetch ${fileName} (Status: ${response.status} ${response.statusText}) from ${url}`);
         }
 
         const csvText = await response.text();
@@ -73,14 +81,14 @@ const FlashcardPage: React.FC = () => {
           },
           error: (err) => {
             console.error('CSV Parse Error:', err);
-            setError('Failed to parse flashcard file.');
+            setError(`Failed to parse ${fileName}: ${err.message}`);
             setLoading(false);
           }
         });
 
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        setError('Failed to load flashcards.');
+        setError(`Error: ${err.message}`);
         setLoading(false);
       }
     };

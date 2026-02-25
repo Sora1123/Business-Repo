@@ -12,10 +12,10 @@ const paperNames: Record<string, string> = {
 };
 
 const fileMapping: Record<string, string> = {
-  paper1: 'Paper 1.csv',
-  paper2sl: 'Paper 2 SL.csv',
-  paper2hl: 'Paper 2 HL.csv',
-  paper3hl: 'Paper 3.csv',
+  paper1: 'Paper_1.csv',
+  paper2sl: 'Paper_2_SL.csv',
+  paper2hl: 'Paper_2_HL.csv',
+  paper3hl: 'Paper_3.csv',
 };
 
 const PaperPage: React.FC = () => {
@@ -39,10 +39,18 @@ const PaperPage: React.FC = () => {
 
     try {
       const fileName = fileMapping[paperId];
-      const response = await fetch(`/CSVfiles/${fileName}`);
+      // Use BASE_URL to ensure correct path in subdirectories
+      const baseUrl = import.meta.env.BASE_URL.endsWith('/') 
+        ? import.meta.env.BASE_URL 
+        : `${import.meta.env.BASE_URL}/`;
+      
+      const url = `${baseUrl}CSVfiles/${fileName}`;
+      console.log(`Fetching from: ${url}`);
+
+      const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch ${fileName}`);
+        throw new Error(`Failed to fetch ${fileName} (Status: ${response.status} ${response.statusText}) from ${url}`);
       }
 
       const csvText = await response.text();
@@ -53,7 +61,7 @@ const PaperPage: React.FC = () => {
         complete: (results) => {
           const data = results.data as any[];
           if (data.length === 0) {
-            setError('No questions found in the file.');
+            setError(`No questions found in ${fileName}.`);
             setLoading(false);
             return;
           }
@@ -62,7 +70,7 @@ const PaperPage: React.FC = () => {
           const validQuestions = data.filter(row => row.Content || row.content || Object.values(row)[0]);
           
           if (validQuestions.length === 0) {
-             setError('No valid questions found.');
+             setError(`No valid questions found in ${fileName}.`);
              setLoading(false);
              return;
           }
@@ -76,14 +84,14 @@ const PaperPage: React.FC = () => {
         },
         error: (err) => {
           console.error('CSV Parse Error:', err);
-          setError('Failed to parse question file.');
+          setError(`Failed to parse ${fileName}: ${err.message}`);
           setLoading(false);
         }
       });
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('An error occurred while fetching the question file.');
+      setError(`Error: ${err.message}`);
       setLoading(false);
     }
   };

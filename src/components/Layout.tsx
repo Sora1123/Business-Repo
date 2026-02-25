@@ -28,19 +28,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             >
               Home
             </Link>
-            <Link
-              to="/admin"
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                location.pathname === '/admin'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <div className="flex items-center gap-1">
-                <Settings className="w-4 h-4" />
-                <span>Admin</span>
-              </div>
-            </Link>
           </nav>
         </div>
       </header>
