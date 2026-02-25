@@ -1,126 +1,88 @@
-import { createClient } from '@libsql/client';
-import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { parse } from 'csv-parse/sync';
 
-dotenv.config();
+const CSV_DIR = path.resolve('CSVfiles');
 
-const url = process.env.TURSO_DATABASE_URL || 'file:questions.db';
-const authToken = process.env.TURSO_AUTH_TOKEN;
-
-const db = createClient({
-  url,
-  authToken,
-});
-
-// Initialize the database schema
-export const initDb = async () => {
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS questions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      paper_type TEXT NOT NULL,
-      content TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS flashcards (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL,
-      front TEXT NOT NULL,
-      back TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+// Map frontend IDs to filenames
+const FILE_MAPPING: Record<string, string> = {
+  'paper1': 'Paper 1.csv',
+  'paper2sl': 'Paper 2 SL.csv',
+  'paper2hl': 'Paper 2 HL.csv',
+  'paper3hl': 'Paper 3.csv',
+  'sl': 'Flashcards SL.csv',
+  'hl': 'Flashcards HL.csv'
 };
 
 export interface Question {
-  id: number;
-  paper_type: string;
   content: string;
-  created_at: string;
 }
 
 export interface Flashcard {
-  id: number;
-  type: string;
+  id: number; // Generated index
   front: string;
   back: string;
-  created_at: string;
 }
 
-export const getQuestions = async (paperType?: string): Promise<Question[]> => {
-  if (paperType) {
-    const rs = await db.execute({
-      sql: 'SELECT * FROM questions WHERE paper_type = ? ORDER BY created_at DESC',
-      args: [paperType]
-    });
-    return rs.rows as unknown as Question[];
+// Helper to read CSV
+const readCsv = (filename: string): any[] => {
+  const filePath = path.join(CSV_DIR, filename);
+  if (!fs.existsSync(filePath)) {
+    console.warn(`File not found: ${filePath}`);
+    return [];
   }
-  const rs = await db.execute('SELECT * FROM questions ORDER BY created_at DESC');
-  return rs.rows as unknown as Question[];
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  return parse(fileContent, {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true
+  });
+};
+
+export const initDb = async () => {
+  // No-op for CSV implementation, but kept for compatibility if needed
+  console.log('CSV Database initialized');
+};
+
+export const getQuestions = async (paperType?: string): Promise<Question[]> => {
+  if (!paperType || !FILE_MAPPING[paperType]) {
+    return [];
+  }
+  const filename = FILE_MAPPING[paperType];
+  const records = readCsv(filename);
+  
+  // Expecting CSV with 'Content' column
+  return records.map((r: any) => ({
+    content: r.Content || r.content || Object.values(r)[0] // Fallback to first column
+  }));
 };
 
 export const getRandomQuestion = async (paperType: string): Promise<Question | undefined> => {
-  const rs = await db.execute({
-    sql: 'SELECT * FROM questions WHERE paper_type = ? ORDER BY RANDOM() LIMIT 1',
-    args: [paperType]
-  });
-  return (rs.rows[0] as unknown as Question) || undefined;
+  const questions = await getQuestions(paperType);
+  if (questions.length === 0) return undefined;
+  const randomIndex = Math.floor(Math.random() * questions.length);
+  return questions[randomIndex];
 };
 
-export const addQuestion = async (paperType: string, content: string): Promise<void> => {
-  await db.execute({
-    sql: 'INSERT INTO questions (paper_type, content) VALUES (?, ?)',
-    args: [paperType, content]
-  });
-};
-
-export const updateQuestion = async (id: number, content: string): Promise<void> => {
-  await db.execute({
-    sql: 'UPDATE questions SET content = ? WHERE id = ?',
-    args: [content, id]
-  });
-};
-
-export const deleteQuestion = async (id: number): Promise<void> => {
-  await db.execute({
-    sql: 'DELETE FROM questions WHERE id = ?',
-    args: [id]
-  });
-};
-
-// Flashcard operations
 export const getFlashcards = async (type?: string): Promise<Flashcard[]> => {
-  if (type) {
-    const rs = await db.execute({
-      sql: 'SELECT * FROM flashcards WHERE type = ? ORDER BY created_at DESC',
-      args: [type]
-    });
-    return rs.rows as unknown as Flashcard[];
+  if (!type || !FILE_MAPPING[type]) {
+    return [];
   }
-  const rs = await db.execute('SELECT * FROM flashcards ORDER BY created_at DESC');
-  return rs.rows as unknown as Flashcard[];
+  const filename = FILE_MAPPING[type];
+  const records = readCsv(filename);
+
+  // Expecting CSV with 'Front' and 'Back' columns
+  return records.map((r: any, index: number) => ({
+    id: index,
+    front: r.Front || r.front,
+    back: r.Back || r.back
+  }));
 };
 
-export const addFlashcard = async (type: string, front: string, back: string): Promise<void> => {
-  await db.execute({
-    sql: 'INSERT INTO flashcards (type, front, back) VALUES (?, ?, ?)',
-    args: [type, front, back]
-  });
-};
-
-export const updateFlashcard = async (id: number, front: string, back: string): Promise<void> => {
-  await db.execute({
-    sql: 'UPDATE flashcards SET front = ?, back = ? WHERE id = ?',
-    args: [front, back, id]
-  });
-};
-
-export const deleteFlashcard = async (id: number): Promise<void> => {
-  await db.execute({
-    sql: 'DELETE FROM flashcards WHERE id = ?',
-    args: [id]
-  });
-};
-
-export default db;
+// Write operations are disabled/removed as per request
+export const addQuestion = async () => { throw new Error('Write operations disabled'); };
+export const updateQuestion = async () => { throw new Error('Write operations disabled'); };
+export const deleteQuestion = async () => { throw new Error('Write operations disabled'); };
+export const addFlashcard = async () => { throw new Error('Write operations disabled'); };
+export const updateFlashcard = async () => { throw new Error('Write operations disabled'); };
+export const deleteFlashcard = async () => { throw new Error('Write operations disabled'); };
