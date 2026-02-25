@@ -4,10 +4,12 @@ import { motion } from 'motion/react';
 import { FileText, GraduationCap, Book, Layers } from 'lucide-react';
 
 const papers = [
-  { id: 'paper1', name: 'Paper 1', icon: FileText, color: 'bg-blue-500', description: 'Standard Level & Higher Level' },
-  { id: 'paper2sl', name: 'Paper 2 SL', icon: Book, color: 'bg-green-500', description: 'Standard Level' },
-  { id: 'paper2hl', name: 'Paper 2 HL', icon: GraduationCap, color: 'bg-purple-500', description: 'Higher Level' },
-  { id: 'paper3hl', name: 'Paper 3 HL', icon: Layers, color: 'bg-orange-500', description: 'Higher Level Only' },
+  { id: 'paper1', name: 'Paper 1', icon: FileText, color: 'bg-blue-500', description: 'Standard Level & Higher Level', link: '/paper/paper1' },
+  { id: 'paper2sl', name: 'Paper 2 SL', icon: Book, color: 'bg-green-500', description: 'Standard Level', link: '/paper/paper2sl' },
+  { id: 'paper2hl', name: 'Paper 2 HL', icon: GraduationCap, color: 'bg-purple-500', description: 'Higher Level', link: '/paper/paper2hl' },
+  { id: 'paper3hl', name: 'Paper 3 HL', icon: Layers, color: 'bg-orange-500', description: 'Higher Level Only', link: '/paper/paper3hl' },
+  { id: 'flashcardsl', name: 'Flashcard SL', icon: Layers, color: 'bg-pink-500', description: 'Standard Level Flashcards', link: '/flashcards/sl' },
+  { id: 'flashcardhl', name: 'Flashcard HL', icon: Layers, color: 'bg-red-500', description: 'Higher Level Flashcards', link: '/flashcards/hl' },
 ];
 
 const Home: React.FC = () => {
@@ -15,16 +17,16 @@ const Home: React.FC = () => {
     <div className="space-y-8">
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl">
-          Select a Paper
+          IB Question Bank & Flashcards
         </h1>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Choose a paper type below to generate practice questions from the database.
+          Choose a resource below to start practicing.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
         {papers.map((paper) => (
-          <Link key={paper.id} to={`/paper/${paper.id}`}>
+          <Link key={paper.id} to={paper.link}>
             <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

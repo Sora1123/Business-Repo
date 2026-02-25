@@ -1,86 +1,95 @@
-import express from 'express';
-import { createServer as createViteServer } from 'vite';
+import Database from 'better-sqlite3';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { getQuestions, getRandomQuestion, addQuestion, deleteQuestion } from './src/db.js';
+import fs from 'fs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const dbPath = path.resolve('questions.db');
+const db = new Database(dbPath);
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+// Initialize the database schema
+db.exec(`
+  CREATE TABLE IF NOT EXISTS questions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    paper_type TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 
-  app.use(express.json());
+  CREATE TABLE IF NOT EXISTS flashcards (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    front TEXT NOT NULL,
+    back TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+`);
 
-  // API Routes
-  app.get('/api/questions', (req, res) => {
-    const { paperType } = req.query;
-    try {
-      const questions = getQuestions(paperType as string);
-      res.json(questions);
-    } catch (error) {
-      console.error('Error fetching questions:', error);
-      res.status(500).json({ error: 'Failed to fetch questions' });
-    }
-  });
-
-  app.get('/api/questions/random', (req, res) => {
-    const { paperType } = req.query;
-    if (!paperType) {
-      return res.status(400).json({ error: 'paperType is required' });
-    }
-    try {
-      const question = getRandomQuestion(paperType as string);
-      res.json(question || null);
-    } catch (error) {
-      console.error('Error fetching random question:', error);
-      res.status(500).json({ error: 'Failed to fetch random question' });
-    }
-  });
-
-  app.post('/api/questions', (req, res) => {
-    const { paperType, content } = req.body;
-    if (!paperType || !content) {
-      return res.status(400).json({ error: 'paperType and content are required' });
-    }
-    try {
-      addQuestion(paperType, content);
-      res.status(201).json({ message: 'Question added successfully' });
-    } catch (error) {
-      console.error('Error adding question:', error);
-      res.status(500).json({ error: 'Failed to add question' });
-    }
-  });
-
-  app.delete('/api/questions/:id', (req, res) => {
-    const { id } = req.params;
-    try {
-      deleteQuestion(parseInt(id));
-      res.json({ message: 'Question deleted successfully' });
-    } catch (error) {
-      console.error('Error deleting question:', error);
-      res.status(500).json({ error: 'Failed to delete question' });
-    }
-  });
-
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    // Serve static files in production
-    app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (req, res) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
-    });
-  }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+export interface Question {
+  id: number;
+  paper_type: string;
+  content: string;
+  created_at: string;
 }
 
-startServer();
+export interface Flashcard {
+  id: number;
+  type: string;
+  front: string;
+  back: string;
+  created_at: string;
+}
+
+export const getQuestions = (paperType?: string): Question[] => {
+  if (paperType) {
+    const stmt = db.prepare('SELECT * FROM questions WHERE paper_type = ? ORDER BY created_at DESC');
+    return stmt.all(paperType) as Question[];
+  }
+  const stmt = db.prepare('SELECT * FROM questions ORDER BY created_at DESC');
+  return stmt.all() as Question[];
+};
+
+export const getRandomQuestion = (paperType: string): Question | undefined => {
+  const stmt = db.prepare('SELECT * FROM questions WHERE paper_type = ? ORDER BY RANDOM() LIMIT 1');
+  return stmt.get(paperType) as Question | undefined;
+};
+
+export const addQuestion = (paperType: string, content: string): void => {
+  const stmt = db.prepare('INSERT INTO questions (paper_type, content) VALUES (?, ?)');
+  stmt.run(paperType, content);
+};
+
+export const updateQuestion = (id: number, content: string): void => {
+  const stmt = db.prepare('UPDATE questions SET content = ? WHERE id = ?');
+  stmt.run(content, id);
+};
+
+export const deleteQuestion = (id: number): void => {
+  const stmt = db.prepare('DELETE FROM questions WHERE id = ?');
+  stmt.run(id);
+};
+
+// Flashcard operations
+export const getFlashcards = (type?: string): Flashcard[] => {
+  if (type) {
+    const stmt = db.prepare('SELECT * FROM flashcards WHERE type = ? ORDER BY created_at DESC');
+    return stmt.all(type) as Flashcard[];
+  }
+  const stmt = db.prepare('SELECT * FROM flashcards ORDER BY created_at DESC');
+  return stmt.all() as Flashcard[];
+};
+
+export const addFlashcard = (type: string, front: string, back: string): void => {
+  const stmt = db.prepare('INSERT INTO flashcards (type, front, back) VALUES (?, ?, ?)');
+  stmt.run(type, front, back);
+};
+
+export const updateFlashcard = (id: number, front: string, back: string): void => {
+  const stmt = db.prepare('UPDATE flashcards SET front = ?, back = ? WHERE id = ?');
+  stmt.run(front, back, id);
+};
+
+export const deleteFlashcard = (id: number): void => {
+  const stmt = db.prepare('DELETE FROM flashcards WHERE id = ?');
+  stmt.run(id);
+};
+
+export default db;
