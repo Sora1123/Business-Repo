@@ -1,4 +1,4 @@
-import db from '../src/db.js';
+import { initDb, addQuestion } from '../src/db.js';
 
 const questions = [
   { paper_type: 'paper1', content: 'Explain the concept of opportunity cost using a production possibility curve diagram.' },
@@ -8,14 +8,18 @@ const questions = [
   { paper_type: 'paper3hl', content: 'Calculate the price elasticity of demand when the price increases from $10 to $12 and the quantity demanded decreases from 100 to 80 units.' },
 ];
 
-const stmt = db.prepare('INSERT INTO questions (paper_type, content) VALUES (?, ?)');
-
-questions.forEach((q) => {
-  try {
-    stmt.run(q.paper_type, q.content);
-  } catch (e) {
-    console.error('Error inserting question:', e);
+async function seed() {
+  await initDb();
+  
+  for (const q of questions) {
+    try {
+      await addQuestion(q.paper_type, q.content);
+    } catch (e) {
+      console.error('Error inserting question:', e);
+    }
   }
-});
 
-console.log('Database seeded successfully!');
+  console.log('Database seeded successfully!');
+}
+
+seed();
