@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, RefreshCw, ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
+import Papa from 'papaparse';
 
 interface Flashcard {
   id: number;
@@ -9,6 +10,11 @@ interface Flashcard {
   front: string;
   back: string;
 }
+
+const fileMapping: Record<string, string> = {
+  sl: 'Flashcards SL.csv',
+  hl: 'Flashcards HL.csv',
+};
 
 const FlashcardPage: React.FC = () => {
   const { type } = useParams<{ type: string }>();
@@ -22,17 +28,59 @@ const FlashcardPage: React.FC = () => {
 
   useEffect(() => {
     const fetchFlashcards = async () => {
+      if (!type || !fileMapping[type]) {
+        setError('Invalid flashcard type.');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
-        const response = await fetch(`/api/flashcards?type=${type}`);
-        if (!response.ok) throw new Error('Failed to fetch flashcards');
-        const data = await response.json();
-        setFlashcards(data);
-        setCurrentIndex(0);
-        setIsFlipped(false);
+        const fileName = fileMapping[type];
+        const response = await fetch(`/CSVfiles/${fileName}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${fileName}`);
+        }
+
+        const csvText = await response.text();
+        
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            const data = results.data as any[];
+            
+            // Map CSV rows to Flashcard objects
+            const parsedCards: Flashcard[] = data
+              .filter(row => (row.Front || row.front) && (row.Back || row.back))
+              .map((row, index) => ({
+                id: index,
+                type: type,
+                front: row.Front || row.front,
+                back: row.Back || row.back
+              }));
+
+            if (parsedCards.length === 0) {
+              setFlashcards([]); // Empty but valid
+            } else {
+              setFlashcards(parsedCards);
+            }
+            
+            setCurrentIndex(0);
+            setIsFlipped(false);
+            setLoading(false);
+          },
+          error: (err) => {
+            console.error('CSV Parse Error:', err);
+            setError('Failed to parse flashcard file.');
+            setLoading(false);
+          }
+        });
+
       } catch (err) {
+        console.error(err);
         setError('Failed to load flashcards.');
-      } finally {
         setLoading(false);
       }
     };
@@ -75,7 +123,7 @@ const FlashcardPage: React.FC = () => {
         <div className="text-center text-red-500 p-8">{error}</div>
       ) : flashcards.length === 0 ? (
         <div className="text-center text-gray-500 p-12 bg-white rounded-2xl shadow-sm">
-          No flashcards found. Add some in the Admin section!
+          No flashcards found in the CSV file.
         </div>
       ) : (
         <div className="space-y-6">

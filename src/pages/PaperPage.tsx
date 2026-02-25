@@ -2,12 +2,20 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, RefreshCw, Copy, Check, FileText } from 'lucide-react';
+import Papa from 'papaparse';
 
 const paperNames: Record<string, string> = {
   paper1: 'Paper 1',
   paper2sl: 'Paper 2 SL',
   paper2hl: 'Paper 2 HL',
   paper3hl: 'Paper 3 HL',
+};
+
+const fileMapping: Record<string, string> = {
+  paper1: 'Paper 1.csv',
+  paper2sl: 'Paper 2 SL.csv',
+  paper2hl: 'Paper 2 HL.csv',
+  paper3hl: 'Paper 3.csv',
 };
 
 const PaperPage: React.FC = () => {
@@ -20,24 +28,62 @@ const PaperPage: React.FC = () => {
   const paperName = paperId ? paperNames[paperId] : 'Unknown Paper';
 
   const fetchQuestion = async () => {
+    if (!paperId || !fileMapping[paperId]) {
+      setError('Invalid paper type.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setQuestion(null);
+
     try {
-      const response = await fetch(`/api/questions/random?paperType=${paperId}`);
+      const fileName = fileMapping[paperId];
+      const response = await fetch(`/CSVfiles/${fileName}`);
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch question');
+        throw new Error(`Failed to fetch ${fileName}`);
       }
-      const data = await response.json();
-      if (!data) {
-        setError('No questions found for this paper type. Please add some in the Admin page.');
-      } else {
-        setQuestion(data);
-      }
+
+      const csvText = await response.text();
+      
+      Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const data = results.data as any[];
+          if (data.length === 0) {
+            setError('No questions found in the file.');
+            setLoading(false);
+            return;
+          }
+
+          // Filter out empty rows or bad data if necessary
+          const validQuestions = data.filter(row => row.Content || row.content || Object.values(row)[0]);
+          
+          if (validQuestions.length === 0) {
+             setError('No valid questions found.');
+             setLoading(false);
+             return;
+          }
+
+          const randomIndex = Math.floor(Math.random() * validQuestions.length);
+          const randomRow = validQuestions[randomIndex];
+          const content = randomRow.Content || randomRow.content || Object.values(randomRow)[0];
+
+          setQuestion({ content });
+          setLoading(false);
+        },
+        error: (err) => {
+          console.error('CSV Parse Error:', err);
+          setError('Failed to parse question file.');
+          setLoading(false);
+        }
+      });
+
     } catch (err) {
-      setError('An error occurred while fetching the question.');
       console.error(err);
-    } finally {
+      setError('An error occurred while fetching the question file.');
       setLoading(false);
     }
   };
@@ -73,7 +119,7 @@ const PaperPage: React.FC = () => {
               className="flex flex-col items-center gap-4"
             >
               <RefreshCw className="w-10 h-10 text-indigo-500 animate-spin" />
-              <p className="text-gray-500 font-medium">Generating question...</p>
+              <p className="text-gray-500 font-medium">Reading CSV file...</p>
             </motion.div>
           ) : error ? (
             <motion.div
@@ -84,11 +130,6 @@ const PaperPage: React.FC = () => {
               className="text-red-500 font-medium max-w-md"
             >
               {error}
-              <div className="mt-4">
-                <Link to="/admin" className="text-indigo-600 hover:underline">
-                  Go to Admin to add questions
-                </Link>
-              </div>
             </motion.div>
           ) : question ? (
             <motion.div
