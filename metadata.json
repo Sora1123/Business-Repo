@@ -1,0 +1,5 @@
+{
+  "name": "IB Question Bank",
+  "description": "A question bank application for Paper 1, Paper 2 SL/HL, and Paper 3 HL with database storage.",
+  "requestFramePermissions": []
+}
