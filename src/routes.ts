@@ -1,18 +1,7 @@
 import express from 'express';
 import { getQuestions, getRandomQuestion, addQuestion, deleteQuestion, updateQuestion, getFlashcards, addFlashcard, updateFlashcard, deleteFlashcard } from './db.js';
 
-const PASSWORD = "password01#";
-
 export function setupRoutes(app: express.Express) {
-  // Middleware to check password for write operations
-  const checkPassword = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const password = req.headers['x-admin-password'];
-    if (password !== PASSWORD) {
-      return res.status(401).json({ error: 'Unauthorized: Incorrect password' });
-    }
-    next();
-  };
-
   // API Routes - Questions
   app.get('/api/questions', async (req, res) => {
     const { paperType } = req.query;
@@ -39,7 +28,7 @@ export function setupRoutes(app: express.Express) {
     }
   });
 
-  app.post('/api/questions', checkPassword, async (req, res) => {
+  app.post('/api/questions', async (req, res) => {
     const { paperType, content } = req.body;
     if (!paperType || !content) {
       return res.status(400).json({ error: 'paperType and content are required' });
@@ -53,7 +42,7 @@ export function setupRoutes(app: express.Express) {
     }
   });
 
-  app.put('/api/questions/:id', checkPassword, async (req, res) => {
+  app.put('/api/questions/:id', async (req, res) => {
     const { id } = req.params;
     const { content } = req.body;
     if (!content) {
@@ -68,7 +57,7 @@ export function setupRoutes(app: express.Express) {
     }
   });
 
-  app.delete('/api/questions/:id', checkPassword, async (req, res) => {
+  app.delete('/api/questions/:id', async (req, res) => {
     const { id } = req.params;
     try {
       await deleteQuestion(parseInt(id));
@@ -91,7 +80,7 @@ export function setupRoutes(app: express.Express) {
     }
   });
 
-  app.post('/api/flashcards', checkPassword, async (req, res) => {
+  app.post('/api/flashcards', async (req, res) => {
     const { type, front, back } = req.body;
     if (!type || !front || !back) {
       return res.status(400).json({ error: 'type, front, and back are required' });
@@ -105,7 +94,7 @@ export function setupRoutes(app: express.Express) {
     }
   });
 
-  app.put('/api/flashcards/:id', checkPassword, async (req, res) => {
+  app.put('/api/flashcards/:id', async (req, res) => {
     const { id } = req.params;
     const { front, back } = req.body;
     if (!front || !back) {
@@ -120,7 +109,7 @@ export function setupRoutes(app: express.Express) {
     }
   });
 
-  app.delete('/api/flashcards/:id', checkPassword, async (req, res) => {
+  app.delete('/api/flashcards/:id', async (req, res) => {
     const { id } = req.params;
     try {
       await deleteFlashcard(parseInt(id));

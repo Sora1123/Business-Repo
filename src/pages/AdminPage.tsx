@@ -30,8 +30,6 @@ interface Flashcard {
 
 const AdminPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'questions' | 'flashcards'>('questions');
-  const [password, setPassword] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // Client-side check for UI feedback
   
   // Questions State
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -53,15 +51,8 @@ const AdminPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const checkPassword = () => {
-    // We will verify with the server on action, but for UI feedback we can check here
-    // In a real app, we wouldn't hardcode this client side, but for this requirement:
-    return password === "password01#";
-  };
-
   const getHeaders = () => ({
     'Content-Type': 'application/json',
-    'x-admin-password': password
   });
 
   // --- Questions Logic ---
@@ -275,16 +266,6 @@ const AdminPage: React.FC = () => {
     <div className="max-w-5xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
-          <Lock className="w-4 h-4 text-gray-400" />
-          <input
-            type="password"
-            placeholder="Enter Admin Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="border-none focus:ring-0 text-sm w-48"
-          />
-        </div>
       </div>
 
       {message && (
